@@ -1,12 +1,19 @@
 import treadmill
 
-heap = treadmill.Heap()
+def get_roots():
+    return roots
+
+heap = treadmill.Heap(get_roots)
 
 foo = heap.allocate()
 bar = heap.allocate()
 baz = heap.allocate()
 
-bar.add_child(foo)
-baz.add_child(foo)
+print([foo, bar, baz])
 
-print(heap.objects)
+roots = {bar}
+
+bar.add_child(foo)
+
+baz = heap.allocate()
+print([foo, bar, baz])
