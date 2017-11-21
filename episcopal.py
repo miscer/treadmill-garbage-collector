@@ -1,19 +1,25 @@
 import treadmill
 
+live_objects = []
+
 def get_roots():
-    return roots
+    return live_objects
 
 heap = treadmill.Heap(get_roots)
 
-foo = heap.allocate()
-bar = heap.allocate()
-baz = heap.allocate()
+for _ in range(2000):
+    if len(live_objects) < 100:
+        live_objects.append(heap.allocate())
+        heap.print()
+    else:
+        live_objects.pop(0)
 
-print([foo, bar, baz])
+        live = heap.allocate()
 
-roots = {bar}
+        heap.print()
 
-bar.add_child(foo)
+        if live in live_objects:
+            print('Returned live object!')
+            exit(1)
 
-baz = heap.allocate()
-print([foo, bar, baz])
+        live_objects.append(live)
