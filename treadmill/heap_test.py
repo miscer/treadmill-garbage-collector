@@ -15,6 +15,117 @@ def test_create_free_cells():
     assert len(list(iterate(first))) == 10
 
 
+def test_mark_to_scan_scanned_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=3)
+
+    first, second, third = heap.free
+
+    heap.free = third
+    heap.bottom = first
+    heap.top = first
+
+    second.mark = heap.live_mark
+
+    heap.mark_to_scan(second)
+
+    # nothing has changed
+    assert heap.free == third
+    assert heap.bottom == first
+    assert heap.top == first
+
+    assert second.mark == heap.live_mark
+
+
+def test_mark_to_scan_the_only_white_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=3)
+
+    first, second, third = heap.free
+
+    heap.free = third
+    heap.bottom = first
+    heap.top = first
+
+    heap.mark_to_scan(first)
+
+    assert heap.free == third
+    assert heap.bottom == first
+    assert heap.top is None
+
+    assert first.mark == heap.live_mark
+
+    assert list(first) == [first, second, third]
+
+
+def test_mark_to_scan_first_white_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=3)
+
+    first, second, third = heap.free
+
+    heap.free = third
+    heap.bottom = first
+    heap.top = second
+
+    heap.mark_to_scan(second)
+
+    assert heap.free == third
+    assert heap.bottom == first
+    assert heap.top == first
+
+    assert second.mark == heap.live_mark
+
+    assert list(first) == [first, second, third]
+
+
+def test_mark_to_scan_last_white_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=3)
+
+    first, second, third = heap.free
+
+    heap.free = third
+    heap.bottom = first
+    heap.top = second
+
+    heap.mark_to_scan(first)
+
+    assert heap.free == third
+    assert heap.bottom == second
+    assert heap.top == second
+
+    assert first.mark == heap.live_mark
+
+    assert list(second) == [second, first, third]
+
+
+def test_mark_to_scan_middle_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=4)
+
+    first, second, third, fourth = heap.free
+
+    heap.free = fourth
+    heap.bottom = first
+    heap.top = third
+
+    heap.mark_to_scan(second)
+
+    assert heap.free == fourth
+    assert heap.bottom == first
+    assert heap.top == third
+
+    assert second.mark == heap.live_mark
+
+    assert list(first) == [first, third, second, fourth]
+
+
 def test_expand():
     heap = Heap(get_roots=dummy_get_roots,
                 get_children=dummy_get_children,
