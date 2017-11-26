@@ -3,11 +3,7 @@ class Object:
         self.mark = mark
         self.previous = previous
         self.next = next
-        self.children = []
         self.value = None
-
-    def add_child(self, child: 'Object'):
-        self.children.append(child)
 
 
 def initialize_objects(size, mark):

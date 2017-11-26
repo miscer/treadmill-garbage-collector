@@ -1,20 +1,29 @@
 import treadmill
+from episcopal.garbage import get_children
+from episcopal.runtime import Integer
 
 live_objects = []
 
-def get_roots():
+def heap_roots():
     return live_objects
 
-heap = treadmill.Heap(get_roots)
+def heap_children(cell):
+    return get_children(heap.read(cell))
+
+heap = treadmill.Heap(heap_roots, heap_children)
+
+def allocate():
+    cell = heap.allocate()
+    heap.write(cell, Integer(123))
+    return cell
 
 for _ in range(2000):
     if len(live_objects) < 100:
-        live_objects.append(heap.allocate())
-        heap.print()
+        live_objects.append(allocate())
     else:
         live_objects.pop(0)
 
-        live = heap.allocate()
+        live = allocate()
 
         heap.print()
 

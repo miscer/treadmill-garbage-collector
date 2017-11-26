@@ -39,9 +39,14 @@ def treadmill_insert_between(obj, left, right):
     obj.next = right
 
 
+GetRootsFn = Callable[[], Iterable[Object]]
+GetChildrenFn = Callable[[Object], Iterable[Object]]
+
+
 class Heap:
-    def __init__(self, get_roots: Callable[[], Iterable[Object]]):
+    def __init__(self, get_roots: GetRootsFn, get_children: GetChildrenFn):
         self.get_roots = get_roots
+        self.get_children = get_children
 
         self.live_mark = True
 
@@ -150,7 +155,7 @@ class Heap:
         assert self.bottom is not None
 
         # mark all children to be scanned
-        for child in self.scan.children:
+        for child in self.get_children(self.scan):
             self.mark_to_scan(child)
 
         if self.top is not None and self.scan.previous == self.top:
@@ -239,7 +244,6 @@ class Heap:
 
         first_extra.previous = self.free
         last_extra.next = self.bottom
-
 
     def print(self):
         current = self.free
