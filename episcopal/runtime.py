@@ -1,10 +1,10 @@
 from typing import Iterable, List
 
-from treadmill import Object
+from treadmill import Cell
 
 
 class RuntimeObject:
-    def children(self) -> Iterable[Object]:
+    def children(self) -> Iterable[Cell]:
         return ()
 
 
@@ -29,7 +29,7 @@ class Boolean(RuntimeObject):
 
 
 class Distribution(RuntimeObject):
-    def __init__(self, type: int, n: int, elements: List[Object]):
+    def __init__(self, type: int, n: int, elements: List[Cell]):
         self.type = type
         self.n = n
         self.elements = elements
@@ -39,7 +39,7 @@ class Distribution(RuntimeObject):
 
 
 class ParamDistribution(RuntimeObject):
-    def __init__(self, type: int, m: int, parameters: List[Object], n: int, elements: List[Object]):
+    def __init__(self, type: int, m: int, parameters: List[Cell], n: int, elements: List[Cell]):
         self.type = type
         self.m = m
         self.parameters = parameters
@@ -51,7 +51,7 @@ class ParamDistribution(RuntimeObject):
 
 
 class Function(RuntimeObject):
-    def __init__(self, closure, n: int, parameters: List[Object]):
+    def __init__(self, closure, n: int, parameters: List[Cell]):
         self.closure = closure
         self.n = n
         self.parameters = parameters
@@ -61,7 +61,7 @@ class Function(RuntimeObject):
 
 
 class Indirection(RuntimeObject):
-    def __init__(self, obj: Object):
+    def __init__(self, obj: Cell):
         self.object = obj
 
     def children(self):

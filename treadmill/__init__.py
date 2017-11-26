@@ -1,2 +1,2 @@
 from .heap import Heap
-from .object import Object
+from .cell import Cell

@@ -1,23 +1,23 @@
 from typing import Callable, Iterable
 
 from treadmill.list import remove, insert_after, initialize, insert_before
-from treadmill.object import Object, initialize_objects
+from treadmill.cell import Cell
 
 INITIAL_SIZE = 30
 SCAN_STEP_SIZE = 2
 EXPAND_SIZE = 5
 SCAN_THRESHOLD = 0.2
 
-GetRootsFn = Callable[[], Iterable[Object]]
-GetChildrenFn = Callable[[Object], Iterable[Object]]
+GetRootsFn = Callable[[], Iterable[Cell]]
+GetChildrenFn = Callable[[Cell], Iterable[Cell]]
 
 
 def create_free_cells(size):
-    first = Object()
+    first = Cell()
     initialize(first)
 
     for _ in range(size - 1):
-        insert_before(Object(), first)
+        insert_before(Cell(), first)
 
     return first
 
@@ -37,7 +37,7 @@ class Heap:
         self.free = create_free_cells(INITIAL_SIZE)
         self.top = self.bottom = self.scan = None
 
-    def allocate(self) -> Object:
+    def allocate(self) -> Cell:
         print('Allocate')
 
         # check if we should start scanning
@@ -52,20 +52,20 @@ class Heap:
             self.expand()
 
         # mark the cell `free` points to black (i.e. allocated and used)
-        obj = self.free
+        cell = self.free
         self.free = self.free.next
 
         # update number of free cells
         self.num_free -= 1
 
-        # mark the object
-        obj.mark = self.live_mark
+        # mark the cell
+        cell.mark = self.live_mark
 
         # initialise the bottom pointer
         if self.bottom is None:
-            self.bottom = obj
+            self.bottom = cell
 
-        return obj
+        return cell
 
     def read(self, obj):
         print('Read', obj)
