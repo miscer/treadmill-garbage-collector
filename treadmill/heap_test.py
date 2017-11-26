@@ -15,6 +15,103 @@ def test_create_free_cells():
     assert len(list(iterate(first))) == 10
 
 
+def test_read_unscanned_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=10)
+
+    cells = list(heap.free)
+
+    # cells 7-9 are free, cells 4-6 are marked to be scanned, cells 0-3 are yet to be scanned
+    heap.free = cells[7]
+    heap.scan = cells[6]
+    heap.top = cells[3]
+    heap.bottom = cells[0]
+
+    cells[4].mark = cells[5].mark = cells[6].mark = heap.live_mark
+
+    # cell 2 is yet to be scanned and has a value
+    cells[2].value = 123
+
+    value = heap.read(cells[2])
+
+    assert value == 123
+    assert cells[2].mark == heap.live_mark
+    assert list(heap.bottom) == cells[0:2] + [cells[3], cells[2]] + cells[4:]
+
+
+def test_write():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=1)
+
+    cell = heap.free
+    heap.write(cell, 123)
+
+    assert cell.value == 123
+
+
+def test_start_scanning_without_live_cells():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=10)
+
+    # no live cells
+    heap.start_scanning()
+
+    # all cells are still free, nothing changed
+    assert heap.scan is None
+    assert heap.bottom is None
+    assert heap.top is None
+
+
+def test_start_scanning_without_any_roots():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=10)
+
+    cells = list(heap.free)
+
+    # cells 7-9 are free, 0-6 are about to be scanned, no roots
+    heap.free = cells[7]
+    heap.bottom = cells[0]
+
+    heap.start_scanning()
+
+    # all cells are free
+    assert heap.scan is None
+    assert heap.bottom is None
+    assert heap.top is None
+
+    assert heap.num_free == 10
+
+
+def test_start_scanning_with_roots():
+    def get_roots():
+        return [cells[2], cells[3]]
+
+    heap = Heap(get_roots=get_roots,
+                get_children=dummy_get_children,
+                initial_size=10)
+
+    cells = list(heap.free)
+
+    # cells 7-9 are free, 0-6 are about to be scanned, 2-3 are roots
+    heap.free = cells[7]
+    heap.bottom = cells[0]
+
+    heap.start_scanning()
+
+    assert heap.scan == cells[2]
+    assert heap.bottom == cells[0]
+    assert heap.top == cells[6]
+
+    assert cells[2].mark == heap.live_mark
+    assert cells[3].mark == heap.live_mark
+
+    assert list(heap.free) == (cells[7:] + cells[:2] + cells[4:7] + [cells[3], cells[2]])
+
+
 def test_scan_cycle():
     heap = Heap(get_roots=dummy_get_roots,
                 get_children=dummy_get_children,
