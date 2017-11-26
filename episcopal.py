@@ -25,10 +25,10 @@ for _ in range(2000):
 
         live = allocate()
 
-        heap.print()
-
         if live in live_objects:
             print('Returned live object!')
             exit(1)
 
         live_objects.append(live)
+
+    print(heap.string())

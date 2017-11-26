@@ -5,6 +5,7 @@ from treadmill.object import Object, initialize_objects
 INITIAL_SIZE = 30
 SCAN_STEP_SIZE = 2
 EXPAND_SIZE = 5
+SCAN_THRESHOLD = 0.2
 
 
 def treadmill_remove(obj):
@@ -52,6 +53,8 @@ class Heap:
 
         # used to know when there is not enough memory left
         self.num_free = INITIAL_SIZE
+        self.num_total = INITIAL_SIZE
+        self.num_scanned = 0
 
         self.free = initialize_objects(INITIAL_SIZE, None)
         self.top = self.bottom = self.scan = None
@@ -73,6 +76,9 @@ class Heap:
         # mark the cell `free` points to black (i.e. allocated and used)
         obj = self.free
         self.free = self.free.next
+
+        # update number of free cells
+        self.num_free -= 1
 
         # mark the object
         obj.mark = self.live_mark
@@ -97,7 +103,7 @@ class Heap:
         obj.value = value
 
     def needs_collecting(self):
-        return True
+        return (self.num_free / self.num_total) <= SCAN_THRESHOLD
 
     def is_scanning(self):
         return self.scan is not None
@@ -116,6 +122,7 @@ class Heap:
             print('Nothing to scan')
             return
 
+        self.num_scanned = 0
         self.live_mark = not self.live_mark
 
         # find the roots
@@ -138,6 +145,7 @@ class Heap:
             # there are no roots, so all cells are now free
             self.top = None
             self.bottom = None # TODO: don't remove bottom?
+            self.num_free = self.num_total
 
     def scan_cycle(self):
         print('Scan cycle')
@@ -158,6 +166,8 @@ class Heap:
         for child in self.get_children(self.scan):
             self.mark_to_scan(child)
 
+        self.num_scanned += 1
+
         if self.top is not None and self.scan.previous == self.top:
             print('Stop and collect garbage')
             # all grey cells were scanned, so we can stop and collect garbage
@@ -165,16 +175,17 @@ class Heap:
             self.collect()
             return False
 
-        if self.scan == self.bottom:
+        elif self.scan == self.bottom:
             print('No garbage')
             # there are no white cells left, i.e. there is no garbage
             self.scan = None
             self.start_scanning()
             return False
 
-        print('Scanned')
-        self.scan = self.scan.previous
-        return True
+        else:
+            print('Scanned')
+            self.scan = self.scan.previous
+            return True
 
     def collect(self):
         print('Collect')
@@ -188,6 +199,9 @@ class Heap:
         # set the bottom pointer to the last live cell
         self.bottom = self.top.next
         self.top = None
+
+        # update statistics
+        self.num_free = self.num_total - self.num_scanned
 
     def mark_to_scan(self, obj):
         print('Mark to scan', obj)
@@ -245,24 +259,8 @@ class Heap:
         first_extra.previous = self.free
         last_extra.next = self.bottom
 
-    def print(self):
-        current = self.free
+        self.num_total += EXPAND_SIZE
+        self.num_free += EXPAND_SIZE
 
-        while True:
-            print('O', end='')
-
-            if current == self.bottom:
-                print('B', end='')
-            if current == self.top:
-                print('T', end='')
-            if current == self.scan:
-                print('S', end='')
-            if current == self.free:
-                print('F', end='')
-
-            current = current.next
-
-            if current == self.free:
-                break
-
-        print()
+    def string(self):
+        return '{} free out of {} total, {} scanned'.format(self.num_free, self.num_total, self.num_scanned)
