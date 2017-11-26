@@ -3,11 +3,6 @@ from typing import Callable, Iterable
 from treadmill.list import remove, insert_after, initialize, insert_before
 from treadmill.cell import Cell
 
-INITIAL_SIZE = 30
-SCAN_STEP_SIZE = 2
-EXPAND_SIZE = 5
-SCAN_THRESHOLD = 0.2
-
 GetRootsFn = Callable[[], Iterable[Cell]]
 GetChildrenFn = Callable[[Cell], Iterable[Cell]]
 
@@ -23,18 +18,27 @@ def create_free_cells(size):
 
 
 class Heap:
-    def __init__(self, get_roots: GetRootsFn, get_children: GetChildrenFn):
+    def __init__(self,
+                 get_roots: GetRootsFn,
+                 get_children: GetChildrenFn,
+                 initial_size: int = 30,
+                 scan_step_size: int = 5,
+                 expand_size: int = 10,
+                 scan_threshold: float = 0.2):
         self.get_roots = get_roots
         self.get_children = get_children
+        self.scan_step_size = scan_step_size
+        self.expand_size = expand_size
+        self.scan_threshold = scan_threshold
 
         self.live_mark = True
 
         # used to know when there is not enough memory left
-        self.num_free = INITIAL_SIZE
-        self.num_total = INITIAL_SIZE
+        self.num_free = initial_size
+        self.num_total = initial_size
         self.num_scanned = 0
 
-        self.free = create_free_cells(INITIAL_SIZE)
+        self.free = create_free_cells(initial_size)
         self.top = self.bottom = self.scan = None
 
     def allocate(self) -> Cell:
@@ -81,7 +85,7 @@ class Heap:
         cell.value = value
 
     def needs_collecting(self):
-        return (self.num_free / self.num_total) <= SCAN_THRESHOLD
+        return (self.num_free / self.num_total) <= self.scan_threshold
 
     def is_scanning(self):
         return self.scan is not None
@@ -122,13 +126,13 @@ class Heap:
             print('No roots')
             # there are no roots, so all cells are now free
             self.top = None
-            self.bottom = None # TODO: don't remove bottom?
+            self.bottom = None  # TODO: don't remove bottom?
             self.num_free = self.num_total
 
     def scan_cycle(self):
         print('Scan cycle')
 
-        for _ in range(SCAN_STEP_SIZE):
+        for _ in range(self.scan_step_size):
             continue_scan = self.scan_step()
 
             if not continue_scan:
@@ -228,7 +232,7 @@ class Heap:
         # assert that there is only one free cell
         assert self.free.next == self.bottom
 
-        first_extra = create_free_cells(EXPAND_SIZE)
+        first_extra = create_free_cells(self.expand_size)
         last_extra = first_extra.previous
 
         self.free.next = first_extra
@@ -237,8 +241,9 @@ class Heap:
         first_extra.previous = self.free
         last_extra.next = self.bottom
 
-        self.num_total += EXPAND_SIZE
-        self.num_free += EXPAND_SIZE
+        self.num_total += self.expand_size
+        self.num_free += self.expand_size
 
     def string(self):
-        return '{} free out of {} total, {} scanned'.format(self.num_free, self.num_total, self.num_scanned)
+        return '{} free out of {} total, {} scanned'.format(self.num_free, self.num_total,
+                                                            self.num_scanned)
