@@ -67,18 +67,18 @@ class Heap:
 
         return cell
 
-    def read(self, obj):
-        print('Read', obj)
+    def read(self, cell):
+        print('Read', cell)
 
         if self.is_scanning():
-            # if scanning, the object needs to be grey or black before read
-            self.mark_to_scan(obj)
+            # if scanning, the cell needs to be grey or black before read
+            self.mark_to_scan(cell)
 
-        return obj.value
+        return cell.value
 
-    def write(self, obj, value):
-        print('Write', obj, value)
-        obj.value = value
+    def write(self, cell, value):
+        print('Write', cell, value)
+        cell.value = value
 
     def needs_collecting(self):
         return (self.num_free / self.num_total) <= SCAN_THRESHOLD
@@ -181,12 +181,12 @@ class Heap:
         # update statistics
         self.num_free = self.num_total - self.num_scanned
 
-    def mark_to_scan(self, obj):
-        print('Mark to scan', obj)
+    def mark_to_scan(self, cell):
+        print('Mark to scan', cell)
 
         assert self.bottom is not None
 
-        if obj.mark == self.live_mark:
+        if cell.mark == self.live_mark:
             print('Cell is already grey or black')
             # do nothing if the cell is already grey or black
             return
@@ -194,33 +194,33 @@ class Heap:
         assert self.top is not None
 
         # mark the cell as live
-        obj.mark = self.live_mark
+        cell.mark = self.live_mark
 
-        if obj == self.bottom and obj == self.top:
+        if cell == self.bottom and cell == self.top:
             print('Marking the only white cell grey')
             # marking the only white cell grey
             # no manipulation needed, just update the top pointer
             self.top = None
-        elif obj == self.bottom:
+        elif cell == self.bottom:
             print('Marking the last white cell grey')
             # marking the last white cell grey
             # update the bottom pointer to the next white cell
-            self.bottom = obj.next
+            self.bottom = cell.next
 
             # remove the cell from whites and add it to greys
-            remove(obj)
-            insert_after(obj, self.top)
-        elif obj == self.top:
+            remove(cell)
+            insert_after(cell, self.top)
+        elif cell == self.top:
             print('Marking the first white cell grey')
             # marking the first white cell grey
             # no manipulation needed, just update the top pointer
-            self.top = obj.previous
+            self.top = cell.previous
         else:
             print('Cell is neither the first or last white cell')
             # cell is neither the first or last white cell
             # move the cell from whites to greys
-            remove(obj)
-            insert_after(obj, self.top)
+            remove(cell)
+            insert_after(cell, self.top)
 
     def expand(self):
         print('Expand')

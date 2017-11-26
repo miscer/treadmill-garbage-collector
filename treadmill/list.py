@@ -36,3 +36,15 @@ def remove(obj):
 
     obj.next = None
     obj.previous = None
+
+
+def iterate(obj):
+    first = obj
+
+    while True:
+        yield obj
+
+        obj = obj.next
+
+        if obj == first:
+            break
