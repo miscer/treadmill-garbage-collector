@@ -78,6 +78,19 @@ class Heap:
 
         return obj
 
+    def read(self, obj):
+        print('Read', obj)
+
+        if self.is_scanning():
+            # if scanning, the object needs to be grey or black before read
+            self.mark_to_scan(obj)
+
+        return obj.value
+
+    def write(self, obj, value):
+        print('Write', obj, value)
+        obj.value = value
+
     def needs_collecting(self):
         return True
 
@@ -183,6 +196,9 @@ class Heap:
 
         assert self.top is not None
 
+        # mark the cell as live
+        obj.mark = self.live_mark
+
         if obj == self.bottom and obj == self.top:
             print('Marking the only white cell grey')
             # marking the only white cell grey
@@ -208,9 +224,6 @@ class Heap:
             # move the cell from whites to greys
             treadmill_remove(obj)
             treadmill_insert_after(obj, self.top)
-
-        # mark the cell as live
-        obj.mark = self.live_mark
 
     def expand(self):
         print('Expand')
