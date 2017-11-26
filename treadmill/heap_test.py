@@ -15,6 +15,78 @@ def test_create_free_cells():
     assert len(list(iterate(first))) == 10
 
 
+def test_first_allocation():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=10)
+
+    cells = list(heap.free)
+    allocated = heap.allocate()
+
+    assert allocated == cells[0]
+    assert heap.free == cells[1]
+    assert heap.bottom == cells[0]
+    assert heap.num_free == 9
+    assert allocated.mark == heap.live_mark
+
+
+def test_allocate_starting_collection_and_collecting():
+    def get_roots():
+        return cells[0:3]
+
+    heap = Heap(get_roots=get_roots,
+                get_children=dummy_get_children,
+                initial_size=10,
+                scan_threshold=0.5,
+                scan_step_size=2)
+
+    cells = list(heap.free)
+
+    # cells 7-9 are free, cells 0-2 are roots, cells 3-6 are potential garbage
+    heap.free = cells[7]
+    heap.bottom = cells[0]
+    heap.num_free = 2
+
+    allocated = heap.allocate()
+
+    # cell 7 is allocated, cells 0-1 were scanned, cell 2 is yet to be scanned, cells 3-6 are
+    # potential garbage, cells 8-9 are free
+    assert allocated == cells[7]
+    assert heap.free == cells[8]
+    assert heap.scan == cells[2]
+    assert heap.bottom == cells[3]
+    assert heap.top == cells[6]
+
+    assert cells[0].mark == heap.live_mark
+    assert cells[1].mark == heap.live_mark
+    assert cells[2].mark == heap.live_mark
+
+
+def test_allocate_expands():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=10,
+                scan_threshold=0.001,
+                expand_size=10)
+
+    cells_before = list(heap.free)
+
+    # cell 9 is free, others are used
+    heap.free = cells_before[9]
+    heap.bottom = cells_before[0]
+    heap.num_free = 1
+
+    allocated = heap.allocate()
+    cells_after = list(heap.bottom)
+
+    # cell 9 is allocated, 10-19 are free
+    assert allocated == cells_before[9]
+    assert heap.free == cells_after[10]
+    assert heap.bottom == cells_before[0]
+    assert heap.num_free == 10
+    assert heap.num_total == 20
+
+
 def test_read_unscanned_cell():
     heap = Heap(get_roots=dummy_get_roots,
                 get_children=dummy_get_children,
