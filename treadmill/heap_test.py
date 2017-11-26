@@ -15,6 +15,29 @@ def test_create_free_cells():
     assert len(list(iterate(first))) == 10
 
 
+def test_collect():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=5)
+
+    cells = list(heap.free)
+
+    # cells 3-4 are free, 2 is live, 0-1 are garbage
+    heap.free = cells[3]
+    heap.bottom = cells[0]
+    heap.top = cells[1]
+
+    heap.num_free = 2
+    heap.num_scanned = 1
+
+    heap.collect()
+
+    # cells 3-4 and 0-1 are free, 2 is live
+    assert heap.free == cells[3]
+    assert heap.bottom == cells[2]
+    assert heap.top is None
+
+
 def test_mark_to_scan_scanned_cell():
     heap = Heap(get_roots=dummy_get_roots,
                 get_children=dummy_get_children,
