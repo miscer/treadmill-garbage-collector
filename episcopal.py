@@ -1,6 +1,10 @@
+import logging
+
 import treadmill
 from episcopal.garbage import get_children
 from episcopal.runtime import Integer
+
+logging.basicConfig(level=logging.DEBUG)
 
 live_objects = []
 

@@ -1,3 +1,4 @@
+import logging
 from typing import Callable, Iterable
 
 from treadmill.list import remove, insert_after, initialize, insert_before
@@ -5,6 +6,8 @@ from treadmill.cell import Cell
 
 GetRootsFn = Callable[[], Iterable[Cell]]
 GetChildrenFn = Callable[[Cell], Iterable[Cell]]
+
+log = logging.getLogger('episcopal')
 
 
 def create_free_cells(size):
@@ -42,7 +45,7 @@ class Heap:
         self.top = self.bottom = self.scan = None
 
     def allocate(self) -> Cell:
-        print('Allocate')
+        log.debug('Allocate')
 
         # check if we should start scanning
         if self.needs_collecting() and not self.is_scanning():
@@ -72,7 +75,7 @@ class Heap:
         return cell
 
     def read(self, cell):
-        print('Read', cell)
+        log.debug('Read %s', cell)
 
         if self.is_scanning():
             # if scanning, the cell needs to be grey or black before read
@@ -81,7 +84,7 @@ class Heap:
         return cell.value
 
     def write(self, cell, value):
-        print('Write', cell, value)
+        log.debug('Write %s to %s', value, cell)
         cell.value = value
 
     def needs_collecting(self):
@@ -94,14 +97,14 @@ class Heap:
         return self.free.next == self.bottom
 
     def start_scanning(self):
-        print('Start scanning')
+        log.debug('Start scanning')
 
         assert self.top is None
         assert self.scan is None
 
         if self.bottom is None:
             # nothing to scan, there are no live cells
-            print('Nothing to scan')
+            log.debug('Nothing to scan')
             return
 
         self.num_scanned = 0
@@ -111,7 +114,7 @@ class Heap:
         roots = list(self.get_roots())
 
         if roots:
-            print('Scanning', len(roots), 'roots')
+            log.debug('Scanning %d roots', len(roots))
 
             # initialise the top pointer and paint all black cells white
             self.top = self.free.previous
@@ -123,14 +126,14 @@ class Heap:
             self.scan = roots[0]
 
         else:
-            print('No roots')
+            log.debug('No roots')
             # there are no roots, so all cells are now free
             self.top = None
             self.bottom = None  # TODO: don't remove bottom?
             self.num_free = self.num_total
 
     def scan_cycle(self):
-        print('Scan cycle')
+        log.debug('Scan cycle')
 
         for _ in range(self.scan_step_size):
             continue_scan = self.scan_step()
@@ -139,7 +142,7 @@ class Heap:
                 break
 
     def scan_step(self):
-        print('Scan step', self.scan)
+        log.debug('Scan step %s', self.scan)
 
         assert self.scan is not None
         assert self.bottom is not None
@@ -151,26 +154,26 @@ class Heap:
         self.num_scanned += 1
 
         if self.top is not None and self.scan.previous == self.top:
-            print('Stop and collect garbage')
+            log.debug('Stop and collect garbage')
             # all grey cells were scanned, so we can stop and collect garbage
             self.scan = None
             self.collect()
             return False
 
         elif self.scan == self.bottom:
-            print('No garbage')
+            log.debug('No garbage')
             # there are no white cells left, i.e. there is no garbage
             self.scan = None
             self.start_scanning()
             return False
 
         else:
-            print('Scanned')
+            log.debug('Scanned')
             self.scan = self.scan.previous
             return True
 
     def collect(self):
-        print('Collect')
+        log.debug('Collect')
 
         # assert that there are no grey cells, i.e. scanning is finished
         assert self.scan is None
@@ -186,12 +189,12 @@ class Heap:
         self.num_free = self.num_total - self.num_scanned
 
     def mark_to_scan(self, cell):
-        print('Mark to scan', cell)
+        log.debug('Mark to scan %s', cell)
 
         assert self.bottom is not None
 
         if cell.mark == self.live_mark:
-            print('Cell is already grey or black')
+            log.debug('Cell is already grey or black')
             # do nothing if the cell is already grey or black
             return
 
@@ -201,12 +204,12 @@ class Heap:
         cell.mark = self.live_mark
 
         if cell == self.bottom and cell == self.top:
-            print('Marking the only white cell grey')
+            log.debug('Marking the only white cell grey')
             # marking the only white cell grey
             # no manipulation needed, just update the top pointer
             self.top = None
         elif cell == self.bottom:
-            print('Marking the last white cell grey')
+            log.debug('Marking the last white cell grey')
             # marking the last white cell grey
             # update the bottom pointer to the next white cell
             self.bottom = cell.next
@@ -215,19 +218,19 @@ class Heap:
             remove(cell)
             insert_after(cell, self.top)
         elif cell == self.top:
-            print('Marking the first white cell grey')
+            log.debug('Marking the first white cell grey')
             # marking the first white cell grey
             # no manipulation needed, just update the top pointer
             self.top = cell.previous
         else:
-            print('Cell is neither the first or last white cell')
+            log.debug('Cell is neither the first or last white cell')
             # cell is neither the first or last white cell
             # move the cell from whites to greys
             remove(cell)
             insert_after(cell, self.top)
 
     def expand(self):
-        print('Expand')
+        log.debug('Expand')
 
         # assert that there is only one free cell
         assert self.free.next == self.bottom
