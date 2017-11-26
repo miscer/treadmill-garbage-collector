@@ -1,5 +1,6 @@
 from typing import Callable, Iterable
 
+from treadmill.list import remove, insert_after, initialize, insert_before
 from treadmill.object import Object, initialize_objects
 
 INITIAL_SIZE = 30
@@ -7,41 +8,18 @@ SCAN_STEP_SIZE = 2
 EXPAND_SIZE = 5
 SCAN_THRESHOLD = 0.2
 
-
-def treadmill_remove(obj):
-    left = obj.previous
-    right = obj.next
-
-    left.next = right
-    right.previous = left
-
-    obj.next = None
-    obj.previous = None
-
-
-def treadmill_insert_before(obj, right):
-    left = right.previous
-    treadmill_insert_between(obj, left, right)
-
-
-def treadmill_insert_after(obj, left):
-    right = left.next
-    treadmill_insert_between(obj, left, right)
-
-
-def treadmill_insert_between(obj, left, right):
-    assert left.next == right
-    assert right.previous == left
-
-    left.next = obj
-    right.previous = obj
-
-    obj.previous = left
-    obj.next = right
-
-
 GetRootsFn = Callable[[], Iterable[Object]]
 GetChildrenFn = Callable[[Object], Iterable[Object]]
+
+
+def create_free_cells(size):
+    first = Object()
+    initialize(first)
+
+    for _ in range(size - 1):
+        insert_before(Object(), first)
+
+    return first
 
 
 class Heap:
@@ -56,7 +34,7 @@ class Heap:
         self.num_total = INITIAL_SIZE
         self.num_scanned = 0
 
-        self.free = initialize_objects(INITIAL_SIZE, None)
+        self.free = create_free_cells(INITIAL_SIZE)
         self.top = self.bottom = self.scan = None
 
     def allocate(self) -> Object:
@@ -230,8 +208,8 @@ class Heap:
             self.bottom = obj.next
 
             # remove the cell from whites and add it to greys
-            treadmill_remove(obj)
-            treadmill_insert_after(obj, self.top)
+            remove(obj)
+            insert_after(obj, self.top)
         elif obj == self.top:
             print('Marking the first white cell grey')
             # marking the first white cell grey
@@ -241,8 +219,8 @@ class Heap:
             print('Cell is neither the first or last white cell')
             # cell is neither the first or last white cell
             # move the cell from whites to greys
-            treadmill_remove(obj)
-            treadmill_insert_after(obj, self.top)
+            remove(obj)
+            insert_after(obj, self.top)
 
     def expand(self):
         print('Expand')
@@ -250,7 +228,7 @@ class Heap:
         # assert that there is only one free cell
         assert self.free.next == self.bottom
 
-        first_extra = initialize_objects(EXPAND_SIZE, None)
+        first_extra = create_free_cells(EXPAND_SIZE)
         last_extra = first_extra.previous
 
         self.free.next = first_extra
