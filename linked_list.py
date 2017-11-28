@@ -47,7 +47,5 @@ if __name__ == '__main__':
     print(heap.string())
 
     for _ in range(10):
-        episcopal_list = None
         create_list(100)
-
         print(heap.string())

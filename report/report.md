@@ -203,16 +203,16 @@ When we run `linked_list.py`, the output is:
 
 ```
 10 free out of 10 total, 0 scanned
-9 free out of 110 total, 0 scanned
-33 free out of 130 total, 19 scanned
-30 free out of 130 total, 7 scanned
-29 free out of 130 total, 4 scanned
-29 free out of 130 total, 3 scanned
-29 free out of 130 total, 3 scanned
-29 free out of 130 total, 3 scanned
-29 free out of 130 total, 3 scanned
-29 free out of 130 total, 3 scanned
-29 free out of 130 total, 3 scanned
+10 free out of 110 total, 80 scanned
+34 free out of 130 total, 20 scanned
+31 free out of 130 total, 8 scanned
+30 free out of 130 total, 5 scanned
+30 free out of 130 total, 4 scanned
+30 free out of 130 total, 4 scanned
+30 free out of 130 total, 4 scanned
+30 free out of 130 total, 4 scanned
+30 free out of 130 total, 4 scanned
+30 free out of 130 total, 4 scanned
 ```
 
 We can see that the total number of cells becomes 130, meaning that the collector could not keep up with the memory requirements of the mutator, but eventually expanded the heap to a size where it could. A stable number of total cells also means that there is no leftover garbage that did not get collected.
@@ -237,7 +237,7 @@ My treadmill collector uses Baker's treadmill algorithm to incrementally scan an
 
 The collector and its API works correctly, as demonstrated by the unit and stress tests, together with a demonstration of a real-world heap.
 
-See `analysis.pdf`.
+For time complexity analysis see `analysis.pdf`.
 
 # Extensions
 
