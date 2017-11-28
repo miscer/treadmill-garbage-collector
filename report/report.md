@@ -5,11 +5,9 @@ author: 140015533
 toc: true
 ---
 
-* num_free is updated when free or bottom is updated
-* i found that it is difficult and error-prone to construct a test heap for each corner case in the collector - especially since it is incremental
-* floating garbage
-
 # Introduction
+
+Baker's treadmill garbage collector is a non-moving incremental garbage collector. This means that it does not move any objects in the memory, they stay at the same addresses, and that it is able to look for garbage incrementally, while the mutator is executing. It utilises a cyclic linked list which is "rotated" as on a treadmill. All operations are constant time relative to the heap size.
 
 The reference for my implementation is from the book Garbage Collection by Jones and Lins. In the book the meanings of the colours ecru (or off-white) and white are switched - ecru is used for free cells and white is used for unscanned cells. In this report and in my implementation these definitions are used, instead of the ones used by Baker in his paper.
 
@@ -56,7 +54,7 @@ In addition to the value, the cells hold some additional metadata. First is the 
 
 The other two are pointers to the previous and next cell in the linked list.
 
-## Cyclic doubly-linked list
+## Cyclic doubly-linked list
 
 A doubly-linked list has two pointers in each element - to the previous and the next element. A cyclic doubly-linked list does not have a first or last element - elements are linked in a cycle.
 
@@ -74,6 +72,22 @@ When the heap is constructed, a number of initial free cells are allocated. Howe
 ## Pointers
 
 The treadmill collector uses 4 pointers to cells: `top`, `bottom`, `free` and `scan`. In the paper these point "between" cells, but my implementation the pointers point to cells. This means that I had to make rules about how the pointers should work:
+
+`free` is always set and it points to the next free cell that can be allocated.
+
+`bottom` is set if there are any live (black) cells and it points to the first live cell.
+
+`top` is set during scanning and it points to the last garbage (white) cell.
+
+`scan` is set during scanning and it points to the cell that is to be scanned next (grey).
+
+When the heap is constructed, only the `free` pointer is set. As soon as the first cell is allocated, the `bottom` pointer is set. If all cells become free again, `bottom` is unset.
+
+![Pointers during scanning](images/scanning.png)
+
+![Pointers when not scanning](images/idle.png)
+
+![Initial pointers](images/initial.png)
 
 ## Allocation
 
@@ -99,9 +113,35 @@ This could be improved by having the collector observe the mutator's behaviour -
 
 ## Starting scanning
 
+When the scan threshold is passed, the collector will start scanning.
+
+First, the meaning of white and non-white are swapped - all objects that were considered non-white until now are now considered white (potential garbage).
+
+Then, the roots are obtained from the mutator. Each root is then marked for scanning (painted grey) and the `scan` pointer is set to the first root.
+
+If there are no roots, the `bottom` pointer is unset, making all cells free.
+
 ## Scan cycle and step
 
+During every allocation a number of cells is scanned, if scanning is in progress. The number is at most `scan_step_size`.
+
+For each scanned cell, the cell's children are first marked to be scanned.
+
+If the scanned cell was the last grey cell and there are some white cells left, these are garbage and can be collected.
+
+If the scanned cell was the last grey cell and there are no other white cells, there was no garbage. In this case the collector will restart the scanning pointer (mark all black cells white, find roots, etc.). This is because there is nothing left for the collector to do - it was triggered because the scan threshold was passed, meaning that some garbage needs to be found and collected. The scanning will be restarted until enough garbage is collected, or until the collector runs out of free cells and expands the heap.
+
+If the scanned cell was not the last grey cell, `scan` will move onto the next grey cell.
+
+## Marking to be scanned
+
+To mark a cell to be scanned, we need to first check if it wasn't marked already. This is done using the `mark` attribute on a cell. The heap has a `live_mark` attribute that contains either `True` or `False`, which is flipped every time scanning starts. If `cell.mark == heap.live_mark`, then the cell has already been scanned or is marked to be scanned.
+
+If the cell is not marked (white), its `mark` attribute is set to `heap.live_mark`. Then it is removed from the white cells and inserted after all grey cells. Special care is taken if it is the first, last or only white cell.
+
 ## Collecting
+
+After scanning is finished, we need to collect the found garbage. This is done simply by setting `bottom` to the last live (black) cell. This turns all garbage (white) cells into free cells. The `top` pointer is unset.
 
 ## Expanding
 
@@ -111,7 +151,7 @@ A number of free cells is first created. This number can be configured by the mu
 
 These additional cells are never released, even if the mutator's memory requirements become lower after some time. To improve this, the collector could monitor the number of free cells and if it stays too high for some time, it could release some of them.
 
-## Statistics
+## Statistics
 
 As the collector allocates and frees cells, it maintains the number of free, scanned and total cells - `num_free`, `num_scanned`, `num_total`.
 
@@ -131,8 +171,6 @@ Baker suggests to use a read barrier that will make sure the mutator never sees 
 
 When the mutator wishes to modify an object, it needs to read it first. If it attempts to read an unscanned object, the collector will mark it to be scanned (i.e. paint it grey). If it reads an already scanned or marked to be scanned object, no action is needed.
 
-Checking whether a cell is unscanned or marked to be scanned is implemented using the `mark` attribute of each cell. The heap has a `live_mark` attribute that contains either `True` or `False`, as described below. If `cell.mark == heap.live_mark`, then the cell has already been scanned or is marked to be scanned.
-
 # Testing
 
 ## Unit testing
@@ -150,6 +188,8 @@ For example, to check if the collector expands the heap when it runs out of free
 * `num_free` is set to 1
 
 This is the same state that would occur after the collector allocated all but one free cell and did not do any garbage collection or scanning.
+
+![All unit tests are passing](images/pytest.png)
 
 ## Test heaps
 
@@ -185,7 +225,7 @@ This way I was able to find many corner cases and bugs in my program before the 
 
 The stress test is in `stress_test.py`.
 
-## Coverage
+## Coverage
 
 I used coverage.py^[https://coverage.readthedocs.io/en/coverage-4.4.2/] to check that the unit tests cover all the code. This tool simply runs a Python program and monitors which statements were executed. When we run all unit tests, the coverage report will show any statements that were not executed during unit tests and therefore are not tested.
 
@@ -193,8 +233,20 @@ My unit tests cover all functions in `heap.py` and `list.py`, meaning that I hav
 
 # Evaluation
 
+My treadmill collector uses Baker's treadmill algorithm to incrementally scan and collect garbage, resulting in a collector that could be used in a system where it is important that allocation takes constant time.
+
+The collector and its API works correctly, as demonstrated by the unit and stress tests, together with a demonstration of a real-world heap.
+
+See `analysis.pdf`.
+
 # Extensions
 
 Baker's treadmill algorithm, as described in the paper, only collects garbage once there are no free cells left. In my implementation the garbage is collected as soon as scanning is finished.
 
 On its own this does not bring any improvements, but if it were paired with the collector releasing memory held by free cells if they are not needed, it could result in better memory utilisation. The memory could be released right after scanning is finished, instead of waiting for all free cells to get allocated as Baker describes it.
+
+# Conclusion
+
+I implemented an incremental treadmill garbage collector as described by Baker. I showed that it offers constant-time allocation, making it suitable for time-sensitive systems. I integrated the collector with Episcopal runtime. The collector is fully tested using unit tests and I demonstrated a real-world use case with linked lists.
+
+This practical was a good exercise in implementing a relatively simple garbage collector. While studying the Garbage Collection book I reinforced my knowledge of other garbage collectors as well.
