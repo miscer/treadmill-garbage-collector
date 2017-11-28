@@ -1,10 +1,13 @@
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from treadmill import Cell
 
 
 class RuntimeObject:
     def children(self) -> Iterable[Cell]:
+        """
+        Returns all children cells of this runtime object.
+        """
         return ()
 
 
@@ -61,11 +64,14 @@ class Function(RuntimeObject):
 
 
 class Indirection(RuntimeObject):
-    def __init__(self, obj: Cell):
+    def __init__(self, obj: Optional[Cell]):
         self.object = obj
 
     def children(self):
-        return (self.object,)
+        if self.object is not None:
+            return (self.object,)
+        else:
+            return ()
 
 
 class Id(RuntimeObject):

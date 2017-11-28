@@ -11,6 +11,10 @@ log = logging.getLogger('episcopal')
 
 
 def create_free_cells(size):
+    """
+    Creates a list containing the specified number of free cells. Returns the
+    first cell.
+    """
     first = Cell()
     initialize(first)
 
@@ -44,7 +48,11 @@ class Heap:
         self.free = create_free_cells(initial_size)
         self.top = self.bottom = self.scan = None
 
-    def allocate(self) -> Cell:
+    def allocate(self):
+        """
+        Allocates a new cell and returns it. Continues or starts scanning if
+        needed, or expands the heap if there are no free cells left.
+        """
         log.debug('Allocate')
 
         # check if we should start scanning
@@ -75,6 +83,10 @@ class Heap:
         return cell
 
     def read(self, cell):
+        """
+        Returns the value stored in the cell. Automatically marks the cell as
+        live.
+        """
         log.debug('Read %s', cell)
 
         if self.is_scanning():
@@ -84,19 +96,36 @@ class Heap:
         return cell.value
 
     def write(self, cell, value):
+        """
+        Writes the value to the cell.
+        """
         log.debug('Write %s to %s', value, cell)
         cell.value = value
 
     def needs_collecting(self):
+        """
+        Checks if the ratio of free and all cells is past the scan threshold
+        and scanning should start.
+        """
         return (self.num_free / self.num_total) <= self.scan_threshold
 
     def is_scanning(self):
+        """
+        Checks if scanning is currently in progress.
+        """
         return self.scan is not None
 
     def is_full(self):
+        """
+        Checks if there is only one or no free cells.
+        """
         return self.num_free <= 1
 
     def start_scanning(self):
+        """
+        Starts the scanning process by finind the roots and marking them to be
+        scanned. If there are no roots, all cells are marked as free.
+        """
         log.debug('Start scanning')
 
         assert self.top is None
@@ -133,6 +162,9 @@ class Heap:
             self.num_free = self.num_total
 
     def scan_cycle(self):
+        """
+        Executes at most n scan steps, where n = scan_step_size.
+        """
         log.debug('Scan cycle')
 
         for _ in range(self.scan_step_size):
@@ -142,6 +174,11 @@ class Heap:
                 break
 
     def scan_step(self):
+        """
+        Scans one cell by marking all its children to be scanned. If scanning
+        finishes, collects the garbage. If no garbage is found, restarts
+        scanning.
+        """
         log.debug('Scan step %s', self.scan)
 
         assert self.scan is not None
@@ -173,6 +210,9 @@ class Heap:
             return True
 
     def collect(self):
+        """
+        Collects garbage when scanning is finished.
+        """
         log.debug('Collect')
 
         # assert that there are no grey cells, i.e. scanning is finished
@@ -189,6 +229,10 @@ class Heap:
         self.num_free = self.num_total - self.num_scanned
 
     def mark_to_scan(self, cell):
+        """
+        Marks cell to be scanned, if it isn't already and if it has not been
+        scanned yet.
+        """
         log.debug('Mark to scan %s', cell)
 
         assert self.bottom is not None
@@ -230,6 +274,9 @@ class Heap:
             insert_after(cell, self.top)
 
     def expand(self):
+        """
+        Creates n free cells and adds them to the heap, where n = expand_size.
+        """
         log.debug('Expand')
 
         first_extra = create_free_cells(self.expand_size)
@@ -249,5 +296,8 @@ class Heap:
         self.num_free += self.expand_size
 
     def string(self):
+        """
+        Returns statistics formatted as a string
+        """
         return '{} free out of {} total, {} scanned'.format(self.num_free, self.num_total,
                                                             self.num_scanned)

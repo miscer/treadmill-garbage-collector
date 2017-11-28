@@ -77,6 +77,40 @@ The treadmill collector uses 4 pointers to cells: `top`, `bottom`, `free` and `s
 
 ## Allocation
 
+Allocation is very simple with the treadmill collector - it simply moves the `free` pointer to the next cell and returns the cell `free` pointed to originally.
+
+I implemented allocation as the `allocated` method in `Heap`. Besides modifying the `free` pointer, it also checks if there are other allocated cells (and the `bottom` pointer is set). If not, it sets `bottom` to the allocated cell, essentially painting it black.
+
+Before the cell is allocated, three things are checked:
+
+1. If there is less free cells than `scan_threshold` allows, scanning will start
+2. If scanning is in progress, some cells should be scanned
+3. If there is only one free cell left, the heap should be expanded
+
+The newly allocated cell is guaranteed to be black, since all of these operations run before the `free` pointer is modified.
+
+## Triggering scanning
+
+The collector needs to start scanning when it thinks it might run out of free cells before scanning is finished. If the mutator allocates cells faster than the collector can deallocate, the heap needs to be expanded, as described below.
+
+In this implementation the heuristic for determining the ideal time to start scanning is fairly simple - a threshold ratio of free and total cells can be set. If this threshold is passed, for example 20% of all cells are free, the collector will start scanning.
+
+This could be improved by having the collector observe the mutator's behaviour - for instance, if it's allocating often and generates a lot of garbage, scanning should begin early to avoid having to expand the heap.
+
+## Starting scanning
+
+## Scan cycle and step
+
+## Collecting
+
+## Expanding
+
+If the collector runs out of free cells, it needs to create more of them. The program simply does this when it is about to allocate the last free cell.
+
+A number of free cells is first created. This number can be configured by the mutator using the `expand_size` parameter. These cells are then inserted after the last free cell.
+
+These additional cells are never released, even if the mutator's memory requirements become lower after some time. To improve this, the collector could monitor the number of free cells and if it stays too high for some time, it could release some of them.
+
 ## Statistics
 
 As the collector allocates and frees cells, it maintains the number of free, scanned and total cells - `num_free`, `num_scanned`, `num_total`.
@@ -89,22 +123,6 @@ As the collector allocates and frees cells, it maintains the number of free, sca
 
 The number of total and free cells are then used to know when to start scanning the heap and collecting garbage.
 
-## Triggering scanning
-
-The collector needs to start scanning when it thinks it might run out of free cells before scanning is finished. If the mutator allocates cells faster than the collector can deallocate, the heap needs to be expanded, as described below.
-
-In this implementation the heuristic for determining the ideal time to start scanning is fairly simple - a threshold ratio of free and total cells can be set. If this threshold is passed, for example 20% of all cells are free, the collector will start scanning.
-
-This could be improved by having the collector observe the mutator's behaviour - for instance, if it's allocating often and generates a lot of garbage, scanning should begin early to avoid having to expand the heap.
-
-## Expanding
-
-If the collector runs out of free cells, it needs to create more of them. The program simply does this when it is about to allocate the last free cell.
-
-A number of free cells is first created. This number can be configured by the mutator using the `expand_size` parameter. These cells are then inserted after the last free cell.
-
-These additional cells are never released, even if the mutator's memory requirements become lower after some time. To improve this, the collector could monitor the number of free cells and if it stays too high for some time, it could release some of them.
-
 ## Read barrier
 
 Since the treadmill collector is incremental, we need to make sure that the mutator does not cause inconsistencies during scanning by modifying the runtime objects.
@@ -115,12 +133,6 @@ When the mutator wishes to modify an object, it needs to read it first. If it at
 
 Checking whether a cell is unscanned or marked to be scanned is implemented using the `mark` attribute of each cell. The heap has a `live_mark` attribute that contains either `True` or `False`, as described below. If `cell.mark == heap.live_mark`, then the cell has already been scanned or is marked to be scanned.
 
-## Starting scanning
-
-## Scan cycle and step
-
-## Collecting
-
 # Testing
 
 ## Unit testing
@@ -129,13 +141,49 @@ I found that it is difficult and error-prone to construct a test heap for each c
 
 Each method in the `Heap` class and all functions for manipulating linked lists are covered by unit tests, so I can be certain that my implementation will work as expected.
 
+Every unit test constructs a specific heap by directly modifying the pointers, live mark and statistics. Since these are the only state the heap holds, we can modify them as we need and the heap will act as if some operations were carried out.
+
+For example, to check if the collector expands the heap when it runs out of free cells, we initialise a heap with 10 initial free cells and modify the state:
+
+* `free` is set to the last free cell
+* `bottom` is set to the first free cell
+* `num_free` is set to 1
+
+This is the same state that would occur after the collector allocated all but one free cell and did not do any garbage collection or scanning.
+
 ## Test heaps
+
+To put the collector into a real-world scenario, I decided to try to implement a basic linked list using Episcopal objects. I used `IND` objects that point from one to another to form a linked list, with the last one not pointing to any cell (a null pointer).
+
+Then I declared to the collector the first pointer in the list as a root. The collector should be able to find all other elements of the list by scanning the children of the indirection objects.
+
+I create a list of 100 elements ten times, discarding the existing list before the new one is constructed. This way the collector should allocate enough free cells to hold one linked list, plus a few leftover objects from the previous list.
+
+When we run `linked_list.py`, the output is:
+
+```
+10 free out of 10 total, 0 scanned
+9 free out of 110 total, 0 scanned
+33 free out of 130 total, 19 scanned
+30 free out of 130 total, 7 scanned
+29 free out of 130 total, 4 scanned
+29 free out of 130 total, 3 scanned
+29 free out of 130 total, 3 scanned
+29 free out of 130 total, 3 scanned
+29 free out of 130 total, 3 scanned
+29 free out of 130 total, 3 scanned
+29 free out of 130 total, 3 scanned
+```
+
+We can see that the total number of cells becomes 130, meaning that the collector could not keep up with the memory requirements of the mutator, but eventually expanded the heap to a size where it could. A stable number of total cells also means that there is no leftover garbage that did not get collected.
 
 ## Stress testing
 
 One of my testing techniques was a form of stress testing. In this test the program will continuously allocate 2000 cells and keep 100 of them as roots. After each allocation, it will check that the allocated cell is not one of the roots.
 
 This way I was able to find many corner cases and bugs in my program before the implementation was fully finished and I could write a complete unit test suite.
+
+The stress test is in `stress_test.py`.
 
 ## Coverage
 
@@ -148,3 +196,5 @@ My unit tests cover all functions in `heap.py` and `list.py`, meaning that I hav
 # Extensions
 
 Baker's treadmill algorithm, as described in the paper, only collects garbage once there are no free cells left. In my implementation the garbage is collected as soon as scanning is finished.
+
+On its own this does not bring any improvements, but if it were paired with the collector releasing memory held by free cells if they are not needed, it could result in better memory utilisation. The memory could be released right after scanning is finished, instead of waiting for all free cells to get allocated as Baker describes it.
