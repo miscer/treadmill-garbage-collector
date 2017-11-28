@@ -29,17 +29,17 @@ class Boolean(RuntimeObject):
 
 
 class Distribution(RuntimeObject):
-    def __init__(self, type: int, n: int, elements: List[Cell]):
+    def __init__(self, type: Cell, n: Cell, elements: List[Cell]):
         self.type = type
         self.n = n
         self.elements = elements
 
     def children(self):
-        return self.elements
+        return [self.type, self.n] + self.elements
 
 
 class ParamDistribution(RuntimeObject):
-    def __init__(self, type: int, m: int, parameters: List[Cell], n: int, elements: List[Cell]):
+    def __init__(self, type: Cell, m: Cell, parameters: List[Cell], n: Cell, elements: List[Cell]):
         self.type = type
         self.m = m
         self.parameters = parameters
@@ -47,17 +47,17 @@ class ParamDistribution(RuntimeObject):
         self.elements = elements
 
     def children(self):
-        return self.parameters + self.elements
+        return [self.type, self.m, self.n] + self.parameters + self.elements
 
 
 class Function(RuntimeObject):
-    def __init__(self, closure, n: int, parameters: List[Cell]):
+    def __init__(self, closure, n: Cell, parameters: List[Cell]):
         self.closure = closure
         self.n = n
         self.parameters = parameters
 
     def children(self):
-        return self.parameters
+        return [self.n] + self.parameters
 
 
 class Indirection(RuntimeObject):
