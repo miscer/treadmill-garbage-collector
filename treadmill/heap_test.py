@@ -87,6 +87,20 @@ def test_allocate_expands():
     assert heap.num_total == 20
 
 
+def test_allocate_expands_with_one_initial_cell():
+    heap = Heap(get_roots=dummy_get_roots,
+                get_children=dummy_get_children,
+                initial_size=1,
+                expand_size=10)
+
+    cells_before = list(heap.free)
+    allocated = heap.allocate()
+    cells_after = list(heap.free)
+
+    assert len(cells_before) == 1
+    assert len(cells_after) == 11
+
+
 def test_read_unscanned_cell():
     heap = Heap(get_roots=dummy_get_roots,
                 get_children=dummy_get_children,

@@ -94,7 +94,7 @@ class Heap:
         return self.scan is not None
 
     def is_full(self):
-        return self.free.next == self.bottom
+        return self.num_free <= 1
 
     def start_scanning(self):
         log.debug('Start scanning')
@@ -129,7 +129,7 @@ class Heap:
             log.debug('No roots')
             # there are no roots, so all cells are now free
             self.top = None
-            self.bottom = None  # TODO: don't remove bottom?
+            self.bottom = None
             self.num_free = self.num_total
 
     def scan_cycle(self):
@@ -232,17 +232,18 @@ class Heap:
     def expand(self):
         log.debug('Expand')
 
-        # assert that there is only one free cell
-        assert self.free.next == self.bottom
-
         first_extra = create_free_cells(self.expand_size)
         last_extra = first_extra.previous
 
-        self.free.next = first_extra
-        self.bottom.previous = last_extra
+        # insert the new cells into the list, after the current free cell
+        left = self.free
+        right = left.next
 
-        first_extra.previous = self.free
-        last_extra.next = self.bottom
+        left.next = first_extra
+        first_extra.previous = left
+
+        right.previous = last_extra
+        last_extra.next = right
 
         self.num_total += self.expand_size
         self.num_free += self.expand_size
